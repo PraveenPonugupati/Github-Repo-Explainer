@@ -35,7 +35,7 @@ GITHUB_API = "https://api.github.com"
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 MAX_FILE_BYTES = 180_000
 MAX_REPO_FILES = 45
-MAX_CONTEXT_CHARS = 45_000
+MAX_CONTEXT_CHARS = 10_000
 REQUEST_TIMEOUT = 25
 
 TEXT_EXTENSIONS = {
@@ -495,7 +495,7 @@ Requirements:
 
 FILE CONTENT:
 ```text
-{content[:MAX_FILE_BYTES]}
+{content[:8000]}
 ```
 """
     return ask_ai(
@@ -542,7 +542,7 @@ Return ONLY valid JSON in this shape:
 
 FILE CONTENT:
 ```text
-{content[:MAX_FILE_BYTES]}
+{content[:8000]}
 ```
 """
     data = extract_json(ask_ai(
@@ -559,9 +559,23 @@ FILE CONTENT:
             raise ValueError("The generated quiz had an invalid question format.")
     return questions
 
+def limit_repo_context(context, max_chars=5000):
+    """Limit repository context before sending it to Groq."""
+    if not context:
+        return ""
+
+    context = str(context).strip()
+
+    if len(context) > max_chars:
+        context = (
+            context[:max_chars]
+            + "\n\n[Repository context truncated.]"
+        )
+
+    return context
 
 def generate_interview_qa(repo):
-    context = limit_repo_context(make_repo_context(repo), max_chars=12000)
+    context = limit_repo_context(make_repo_context(repo), max_chars=5000)
     prompt = f"""
 Create 10 high-value technical interview questions and answers about the WHOLE
 repository, using the repository context below.
